@@ -1,53 +1,12 @@
-name: Azure Static Web Apps CI/CD
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build_and_deploy:
-    runs-on: ubuntu-latest
-    name: Build and Deploy
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'npm'
-      
-      - name: Show initial directory structure
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -la
-      
-      - name: Install dependencies
-        run: npm install
-        working-directory: OCR
-      
-      - name: Build
-        run: npm run build
-        working-directory: OCR
-        env:
-          VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
-      
-      - name: Verify build output
-        run: |
-          echo "Build output in OCR/build:"
-          ls -la OCR/build
-          echo "\nContents of build directory:"
-          find OCR/build -type f | sort
-      
-      - name: Deploy to Azure Static Web App
+- name: Deploy to Azure Static Web App
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          app_location: 'OCR'  # Source code location
-          output_location: 'build'  # Build output directory relative to app_location
-          skip_app_build: true  # We already built the app
+          # CHANGE 1: Point directly to the build output folder
+          app_location: 'OCR/build' 
+          # CHANGE 2: Leave this empty when using skip_app_build
+          output_location: '' 
+          skip_app_build: true
           verbose: true
