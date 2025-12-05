@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  APP_LOCATION: 'OCR'  # The location of the app source code
-  APP_BUILD_COMMAND: 'npm run build'
-  APP_OUTPUT_LOCATION: 'build'  # The output directory of the build
-
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
@@ -24,23 +19,27 @@ jobs:
           node-version: 18
           cache: 'npm'
       
+      - name: Show initial directory structure
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+      
       - name: Install dependencies
-        working-directory: ${{ env.APP_LOCATION }}
         run: npm install
+        working-directory: OCR
       
       - name: Build
-        working-directory: ${{ env.APP_LOCATION }}
-        run: ${{ env.APP_BUILD_COMMAND }}
+        run: npm run build
+        working-directory: OCR
         env:
           VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
       
-      - name: Show directory structure
+      - name: Verify build output
         run: |
-          echo "Current directory: $(pwd)"
-          echo "App directory: ${{ env.APP_LOCATION }}"
-          ls -la ${{ env.APP_LOCATION }}
-          echo "Build output:"
-          ls -la ${{ env.APP_LOCATION }}/${{ env.APP_OUTPUT_LOCATION }}
+          echo "Build output in OCR/build:"
+          ls -la OCR/build
+          echo "\nContents of build directory:"
+          find OCR/build -type f | sort
       
       - name: Deploy to Azure Static Web App
         uses: Azure/static-web-apps-deploy@v1
@@ -48,5 +47,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          app_location: '${{ env.APP_LOCATION }}'
-          output_location: '${{ env.APP_OUTPUT_LOCATION }}'
+          app_location: 'OCR'  # Source code location
+          output_location: 'build'  # Build output directory relative to app_location
+          skip_app_build: true  # We already built the app
+          verbose: true
