@@ -20,9 +20,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
-          # Explicitly pointing to lock file since it's in a subfolder
-          cache-dependency-path: 'OCR/package-lock.json'
+          # Removed cache settings to prevent path errors
       
       - name: Install dependencies
         run: npm install
@@ -34,12 +32,13 @@ jobs:
         env:
           VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
       
-      # CRITICAL FIX: Move the build output to a clean root folder named 'dist'
+      # Moves the build output to a clean root folder named 'dist'
+      # This fixes the Azure "Invalid Directory" error
       - name: Move Build Artifacts to Root
         run: |
           mkdir -p dist
           cp -r OCR/build/* dist/
-          echo "Verifying dist content (should show index.html):"
+          echo "Verifying dist content:"
           ls -la dist
       
       - name: Deploy to Azure Static Web App
@@ -48,10 +47,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          # Points to the folder we just created
           app_location: 'dist'
-          # Must be empty because we are providing pre-built artifacts
           output_location: ''
-          # Tells Azure to use our artifacts and not build again
           skip_app_build: true
           verbose: true
