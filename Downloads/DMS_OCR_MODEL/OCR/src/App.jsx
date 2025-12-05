@@ -5,8 +5,9 @@ import {
   ArrowRight, Database, ServerCrash, Globe, Eye, Percent, CheckSquare,
   Network, User, Building, Cpu, Calendar, Table2, Image as ImageIcon, Layers,
   Grid, Layout, FileDigit, FolderOpen, FileCheck, FolderTree, HardDrive, Folder,
-  ChevronRight, Search, Menu, Download, Filter, MapPin
+  ChevronRight, Search, Menu, Download, Filter, MapPin, Server
 } from 'lucide-react';
+import TestConnection from './components/TestConnection';
 
 const API_ENDPOINT = "http://localhost:8000/api/benchmark";
 
@@ -209,7 +210,8 @@ function SmartStorageView({ results }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border-l-4 border-blue-600 p-6 shadow-sm border-y border-r border-slate-200">
+      <div className="relative bg-white p-6 shadow-sm border border-slate-200">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600"></div>
         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
           <FolderTree className="w-5 h-5 text-blue-600" />
           Intelligent Corporate Taxonomy
@@ -221,7 +223,7 @@ function SmartStorageView({ results }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Object.entries(folders).map(([category, files]) => (
-          <div key={category} className="bg-white border border-slate-200 flex flex-col h-full">
+          <div key={category} className="bg-white border-x border-b border-slate-200 flex flex-col h-full">
             <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                <div className="flex items-center gap-2">
                  <Folder className="w-4 h-4 text-slate-500 fill-blue-100" />
@@ -290,403 +292,45 @@ function UploadView({ files, setFiles, onNext }) {
 
       {files.length > 0 && (
         <div className="bg-white border border-slate-200 flex flex-col max-h-[300px]">
-          <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-2">
-              Staged Files ({files.length})
-            </h4>
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Staged Files ({files.length})</h4>
             <button onClick={onNext} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-1.5 text-xs font-semibold tracking-wide transition-colors flex items-center gap-2 rounded-sm">
               CONFIGURE PIPELINE <ArrowRight className="w-3 h-3" />
             </button>
           </div>
           <div className="overflow-y-auto">
-            <table className="min-w-full text-left text-xs">
-                <thead className="bg-white border-b border-slate-100 text-slate-500">
-                    <tr>
-                        <th className="px-4 py-2 font-medium">Type</th>
-                        <th className="px-4 py-2 font-medium">Filename</th>
-                        <th className="px-4 py-2 font-medium">Size</th>
-                        <th className="px-4 py-2 font-medium text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {files.map((file, i) => {
-                        const { icon: Icon, color } = getFileIcon(file.name);
-                        return (
-                            <tr key={i} className="hover:bg-slate-50 group">
-                                <td className="px-4 py-2 w-10">
-                                    <Icon className={`w-4 h-4 ${color.split(' ')[0]}`} />
-                                </td>
-                                <td className="px-4 py-2 font-medium text-slate-700">{file.name}</td>
-                                <td className="px-4 py-2 text-slate-500 font-mono">{formatBytes(file.size)}</td>
-                                <td className="px-4 py-2 text-right">
-                                    <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-slate-400 hover:text-red-600 transition-colors">
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">File</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Size</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {files.map((file, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-slate-900">{file.name}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-slate-500">{(file.size / 1024).toFixed(1)} KB</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        onClick={() => {
+                          const newFiles = [...files];
+                          newFiles.splice(index, 1);
+                          setFiles(newFiles);
+                        }}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ConfigView({ files, onRun, isRunning }) {
-  const groups = files.reduce((acc, f) => {
-    const ext = '.' + f.name.split('.').pop().toLowerCase();
-    acc[ext] = (acc[ext] || 0) + 1;
-    return acc;
-  }, {});
-
-  return (
-    <div className="h-full flex flex-col gap-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-        {/* Left Column: Summary */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          <div className="bg-white border border-slate-200 h-full flex flex-col">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-2">
-                <Database className="w-4 h-4 text-slate-500" />
-                Manifest Summary
-                </h3>
-            </div>
-            
-            <div className="p-4 flex-1 overflow-y-auto">
-                {Object.keys(groups).length === 0 ? (
-                <p className="text-slate-400 italic text-xs text-center mt-10">No artifacts selected.</p>
-                ) : (
-                <div className="space-y-2">
-                    {Object.entries(groups).map(([ext, count]) => {
-                    const meta = STRATEGY_MAP[ext];
-                    const { icon: Icon, color, bg, border } = getFileIcon(ext); 
-                    return (
-                        <div key={ext} className="flex items-center justify-between p-2 border border-slate-100 bg-slate-50">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-1.5 border ${bg} ${color} ${border}`}>
-                            <Icon className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                            <p className="text-xs font-bold text-slate-800">{ext.toUpperCase()}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-tight">{meta?.cat || 'Unknown'}</p>
-                            </div>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-slate-600 px-2 py-0.5 bg-white border border-slate-200">{count}</span>
-                        </div>
-                    )
-                    })}
-                </div>
-                )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Engine Details */}
-        <div className="lg:col-span-2 flex flex-col">
-          <div className="bg-white border border-slate-200 flex-1 flex flex-col mb-6">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-2">
-                <Settings className="w-4 h-4 text-slate-500" />
-                Execution Plan
-                </h3>
-            </div>
-            <div className="p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Object.entries(STRATEGY_MAP).map(([ext, meta]) => {
-                const isActive = groups[ext] > 0;
-                if (!isActive && ['.jpg','.jpeg','.bmp','.tiff','.heic'].includes(ext)) return null;
-                
-                return (
-                  <div key={ext} className={`p-3 border transition-all ${isActive ? 'border-blue-600 bg-blue-50/10' : 'border-slate-100 bg-slate-50 opacity-50 grayscale'}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 border ${isActive ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{ext}</span>
-                      {isActive && <CheckSquare className="w-3.5 h-3.5 text-blue-600" />}
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="text-xs font-bold text-slate-800">{meta.tool}</p>
-                    </div>
-                    <p className="text-[10px] text-slate-500 border-t border-slate-100 pt-1 mt-1">{meta.strategy}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button 
-              onClick={onRun} 
-              disabled={isRunning}
-              className={`
-                px-6 py-3 font-semibold text-sm tracking-wide text-white transition-all rounded-sm flex items-center gap-2 shadow-sm
-                ${isRunning ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-700 hover:bg-blue-800'}
-              `}
-            >
-                {isRunning ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>EXECUTING BATCH JOB...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>INITIALIZE EXTRACTION</span>
-                  </>
-                )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ResultsView({ results, onReset }) {
-  const [selectedFileIdx, setSelectedFileIdx] = useState(0);
-  const selectedFile = results && results[selectedFileIdx];
-
-  useEffect(() => {
-    if (results?.length && !selectedFile) setSelectedFileIdx(0);
-  }, [results]);
-
-  if (!results) return null;
-
-  return (
-    <div className="h-full flex flex-col gap-6">
-      
-      {/* TOP METRICS */}
-      {selectedFile && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard 
-            label="Latency" 
-            value={`${selectedFile.time_seconds ? selectedFile.time_seconds.toFixed(2) : '0.00'}s`} 
-            icon={Clock} 
-            colorClass="bg-blue-100 text-blue-700" 
-          />
-          <MetricCard 
-            label="Confidence" 
-            value={`${selectedFile.accuracy || 0}%`} 
-            icon={Percent} 
-            colorClass="bg-emerald-100 text-emerald-700" 
-          />
-          <MetricCard 
-            label="Volume" 
-            value={selectedFile.extracted_length ? selectedFile.extracted_length.toLocaleString() : "0"} 
-            sub="Chars"
-            icon={FileText} 
-            colorClass="bg-slate-200 text-slate-700" 
-          />
-          <MetricCard 
-            label="Entities" 
-            value={selectedFile.ner_entities?.length || 0} 
-            sub="Detected"
-            icon={Network} 
-            colorClass="bg-purple-100 text-purple-700" 
-          />
-        </div>
-      )}
-
-      {/* SPLIT VIEW */}
-      <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
-        
-        {/* Left: File List */}
-        <div className="w-72 flex flex-col bg-white border border-slate-200">
-          <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-            <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Index</h4>
-            <button onClick={onReset} className="text-[10px] text-blue-700 font-bold hover:underline uppercase">New Batch</button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {results.map((res, i) => {
-              const { icon: Icon, color } = getFileIcon(res.fileName);
-              const isSelected = i === selectedFileIdx;
-              return (
-                <button 
-                  key={i} 
-                  onClick={() => setSelectedFileIdx(i)}
-                  className={`w-full text-left px-4 py-3 border-b border-slate-100 transition-colors flex items-center justify-between group
-                    ${isSelected ? 'bg-slate-50 border-l-4 border-l-blue-700' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Icon className={`w-3.5 h-3.5 ${color.split(' ')[0]}`} />
-                        <p className={`font-semibold text-xs truncate ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{res.fileName}</p>
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-mono truncate pl-5.5">{res.engine}</p>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${res.status === 'Success' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Right: Detailed Viewer */}
-        <div className="flex-1 bg-white border border-slate-200 flex flex-col">
-          {selectedFile ? (
-            <DetailedFileInspector result={selectedFile} />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Select an artifact to inspect details</div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function DetailedFileInspector({ result }) {
-  const [activeView, setActiveView] = useState('rich'); 
-  const [compareText, setCompareText] = useState("");
-  const [similarity, setSimilarity] = useState(null);
-
-  const isSlide = result.fileName?.toLowerCase().endsWith('.pptx');
-  const sectionLabel = isSlide ? "Slide" : "Page";
-
-  const visualAssets = result.slides_data?.flatMap(s => 
-    (s.items || []).filter(i => i.type === 'table_structure' || i.type === 'ocr_image').map(img => ({...img, slide: s.slide_number}))
-  ) || [];
-
-  const runComparison = () => {
-    if (!compareText || !result.text_preview) return;
-    const s1 = compareText.toLowerCase().replace(/\s+/g, '');
-    const s2 = result.text_preview.toLowerCase().replace(/\s+/g, '');
-    const len = Math.max(s1.length, s2.length);
-    if (len === 0) return;
-    let matches = 0;
-    for(let i=0; i<Math.min(s1.length, s2.length); i++) if(s1[i]===s2[i]) matches++;
-    setSimilarity(((matches/len)*100).toFixed(1));
-  };
-
-  const tabs = [
-    { id: 'rich', label: 'Structured View', icon: Layout },
-    { id: 'raw', label: 'Raw Text', icon: FileText },
-    { id: 'smart', label: `Entities (${result.ner_entities?.length || 0})`, icon: Network },
-    { id: 'visual', label: `Assets (${visualAssets.length})`, icon: ImageIcon }
-  ];
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Tabs */}
-      <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`
-              flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors
-              ${activeView === tab.id ? 'border-blue-600 text-blue-700 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}
-            `}
-          >
-            <tab.icon className="w-3.5 h-3.5" /> {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Viewport */}
-      <div className="flex-1 overflow-y-auto p-6 bg-white">
-        
-        {/* 1. RICH VIEW */}
-        {activeView === 'rich' && (
-          <div className="space-y-6 max-w-5xl mx-auto">
-            {result.slides_data && result.slides_data.length > 0 ? (
-              result.slides_data.map((slide, i) => (
-                <div key={i} className="border border-slate-200">
-                  <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
-                    <h4 className="font-bold text-slate-700 text-xs uppercase flex items-center gap-2">
-                      <Layers className="w-3.5 h-3.5 text-slate-500" />
-                      {sectionLabel} {slide.slide_number}
-                    </h4>
-                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">Conf: {slide.accuracy_score}%</span>
-                  </div>
-                  <div className="p-6">
-                    {slide.items && slide.items.map((item, j) => (
-                      <div key={j} className="mb-4 last:mb-0">
-                         <SlideItemRenderer item={item} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-20 bg-slate-50 border border-dashed border-slate-300">
-                <p className="text-slate-500 text-sm mb-4">No structured hierarchy detected.</p>
-                <button onClick={() => setActiveView('raw')} className="text-blue-700 text-xs font-bold hover:underline">SWITCH TO RAW TEXT</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 2. RAW TEXT */}
-        {activeView === 'raw' && (
-          <div className="grid grid-cols-2 gap-6 h-full">
-            <div className="flex flex-col h-full">
-              <span className="text-xs font-bold text-slate-500 uppercase mb-2 block">System Output</span>
-              <textarea 
-                readOnly 
-                className="flex-1 w-full p-4 font-mono text-xs border border-slate-200 bg-slate-50 text-slate-700 resize-none focus:outline-none"
-                value={result.text_preview || "No content extracted"}
-              />
-            </div>
-            <div className="flex flex-col h-full">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase">Ground Truth / Diff</span>
-                {similarity && <Badge variant="brand">MATCH: {similarity}%</Badge>}
-              </div>
-              <textarea 
-                placeholder="Paste original text here to compare accuracy..." 
-                className="flex-1 w-full p-4 font-mono text-xs border border-slate-200 bg-white text-slate-700 resize-none focus:outline-none focus:border-blue-500 transition-colors"
-                value={compareText}
-                onChange={(e) => setCompareText(e.target.value)}
-              />
-              <button onClick={runComparison} className="mt-2 w-full bg-slate-800 text-white py-2 text-xs font-bold uppercase tracking-wider hover:bg-slate-900">Calculate Similarity</button>
-            </div>
-          </div>
-        )}
-
-        {/* 3. VISUAL ASSETS */}
-        {activeView === 'visual' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {visualAssets.length > 0 ? visualAssets.map((asset, i) => (
-              <div key={i} className="border border-slate-200">
-                <div className="bg-slate-50 p-2 border-b border-slate-200 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    {asset.type === 'table_structure' ? <Table2 className="w-3.5 h-3.5 text-emerald-600"/> : <ImageIcon className="w-3.5 h-3.5 text-purple-600"/>}
-                    <span className="text-[10px] font-bold text-slate-700 uppercase">{asset.type === 'table_structure' ? 'Table Data' : 'Image Asset'}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono">#{i+1}</span>
-                </div>
-                <div className="p-4 overflow-auto max-h-60 text-xs">
-                  <SlideItemRenderer item={asset} />
-                </div>
-              </div>
-            )) : (
-              <div className="col-span-2 text-center py-20 text-slate-400 border border-dashed border-slate-300 bg-slate-50">
-                <p className="text-sm">No visual assets extracted.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. INTELLIGENCE (NER) */}
-        {activeView === 'smart' && (
-          <div className="border border-slate-200 p-6 min-h-full">
-            <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2 text-sm uppercase tracking-wide">
-              <Network className="w-4 h-4 text-slate-400" />
-              Named Entity Recognition (GLiNER)
-            </h4>
-            
-            {result.ner_entities && result.ner_entities.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {result.ner_entities.map((e, i) => <EntityChip key={i} entity={e} />)}
-              </div>
-            ) : (
-              <p className="text-slate-400 text-sm italic border-l-2 border-slate-200 pl-3">No entities detected or NER engine disabled.</p>
-            )}
-          </div>
-        )}
-
-      </div>
     </div>
   );
 }
@@ -696,8 +340,7 @@ function DetailedFileInspector({ result }) {
 const NavButton = ({ icon: Icon, label, active, onClick, disabled, badge }) => (
   <button 
     onClick={disabled ? undefined : onClick}
-    className={`
-      w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-l-4
+    className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors border-l-4
       ${active 
         ? 'bg-slate-800 border-l-blue-500 text-white' 
         : disabled 
@@ -720,6 +363,7 @@ export default function OCRBenchmarkApp() {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const handleRun = async () => {
     if (files.length === 0) return;
@@ -745,77 +389,127 @@ export default function OCRBenchmarkApp() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans text-slate-900 overflow-hidden antialiased">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col z-20 shadow-xl border-r border-slate-800">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-700 flex items-center justify-center rounded-sm">
-              <Zap className="w-5 h-5 text-white" fill="white" />
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <Cpu className="h-8 w-8 text-blue-600" />
+                <span className="ml-2 text-xl font-semibold text-gray-900">OCR Benchmark</span>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-sm tracking-wide text-white">OCR CORE</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">Enterprise v3.5</p>
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-500">
+                <Server className="h-4 w-4 text-green-500" />
+                <span>Backend: {process.env.VITE_API_BASE_URL || 'Not configured'}</span>
+              </div>
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="md:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 focus:outline-none"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
             </div>
           </div>
         </div>
+      </header>
 
-        <div className="flex-1 py-6 space-y-1">
-          <p className="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Modules</p>
-          <NavButton icon={Upload} label="Ingestion" active={activeTab === 'upload'} onClick={() => setActiveTab('upload')} badge={files.length || null} />
-          <NavButton icon={Settings} label="Pipeline Config" active={activeTab === 'config'} onClick={() => setActiveTab('config')} disabled={files.length === 0} />
-          <NavButton icon={BarChart3} label="Reporting" active={activeTab === 'results'} onClick={() => setActiveTab('results')} disabled={!results} />
-          <NavButton icon={FolderOpen} label="Smart Archive" active={activeTab === 'storage'} onClick={() => setActiveTab('storage')} disabled={!results} />
-        </div>
-      </aside>
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`${showSidebar ? 'w-64' : 'w-0'} bg-slate-50 border-r border-slate-200 overflow-hidden transition-all duration-200`}>
+          <div className="h-full flex flex-col">
+            <div className="p-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">Navigation</h2>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+              <NavButton 
+                icon={Upload} 
+                label="Upload Files" 
+                active={activeTab === 'upload'} 
+                onClick={() => setActiveTab('upload')} 
+              />
+              <NavButton 
+                icon={Settings} 
+                label="Configuration" 
+                active={activeTab === 'config'} 
+                onClick={() => setActiveTab('config')} 
+                disabled={files.length === 0} 
+              />
+              <NavButton 
+                icon={Database} 
+                label="Results" 
+                active={activeTab === 'results'} 
+                onClick={() => setActiveTab('results')} 
+                disabled={!results || results.length === 0} 
+              />
+              <NavButton 
+                icon={Folder} 
+                label="Storage" 
+                active={activeTab === 'storage'} 
+                onClick={() => setActiveTab('storage')} 
+              />
+            </nav>
+            <div className="p-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Server className="w-4 h-4" />
+                <span>Backend: {process.env.VITE_API_BASE_URL ? 'Connected' : 'Not Configured'}</span>
+              </div>
+            </div>
+          </div>
+        </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-slate-100">
-        
-        {/* HEADER */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-10">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                {activeTab === 'upload' && 'Document Ingestion'}
-                {activeTab === 'config' && 'Pipeline Configuration'}
-                {activeTab === 'results' && 'Intelligence Report'}
-                {activeTab === 'storage' && 'Taxonomy Organizer'}
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Content Header */}
+          <div className="bg-white border-b border-slate-200 p-4">
+            <h2 className="text-lg font-semibold text-slate-800">
+              {activeTab === 'upload' && 'Document Upload'}
+              {activeTab === 'config' && 'Pipeline Configuration'}
+              {activeTab === 'results' && 'Processing Results'}
+              {activeTab === 'storage' && 'Smart Storage'}
             </h2>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input type="text" placeholder="Global Search..." className="pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-sm focus:outline-none focus:border-blue-400 w-64 transition-colors" />
-            </div>
-            <div className="w-8 h-8 bg-slate-100 border border-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs">
-                <User className="w-4 h-4" />
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-auto p-6 bg-slate-50">
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                <div className="flex">
+                  <div className="shrink-0">
+                    <XCircleIcon className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                  <div className="ml-auto pl-3">
+                    <div className="-mx-1.5 -my-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setError(null)}
+                        className="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50"
+                      >
+                        <span className="sr-only">Dismiss</span>
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="h-full">
+              {activeTab === 'upload' && <UploadView files={files} setFiles={setFiles} onNext={() => setActiveTab('config')} />}
+              {activeTab === 'config' && <ConfigView files={files} onRun={handleRun} isRunning={isRunning} />}
+              {activeTab === 'results' && <ResultsView results={results} onReset={() => { setFiles([]); setResults(null); setActiveTab('upload'); }} />}
+              {activeTab === 'storage' && <SmartStorageView results={results} />}
             </div>
           </div>
-        </header>
-
-        {error && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded shadow-lg flex items-center gap-4 animate-in slide-in-from-top-2">
-            <ServerCrash className="w-5 h-5" />
-            <div>
-              <p className="font-bold text-sm">System Error</p>
-              <p className="text-xs opacity-90">{error}</p>
-            </div>
-            <button onClick={() => setError(null)} className="ml-4 hover:bg-red-700 p-1 rounded"><X className="w-4 h-4" /></button>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-auto p-8">
-          <div className="max-w-7xl mx-auto h-full">
-            {activeTab === 'upload' && <UploadView files={files} setFiles={setFiles} onNext={() => setActiveTab('config')} />}
-            {activeTab === 'config' && <ConfigView files={files} onRun={handleRun} isRunning={isRunning} />}
-            {activeTab === 'results' && <ResultsView results={results} onReset={() => { setFiles([]); setResults(null); setActiveTab('upload'); }} />}
-            {activeTab === 'storage' && <SmartStorageView results={results} />}
-          </div>
-        </div>
-
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
