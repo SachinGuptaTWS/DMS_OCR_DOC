@@ -2,45 +2,56 @@ name: Azure Static Web Apps CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+  build_and_deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    name: Build and Deploy
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          submodules: true
-          lfs: false
-      - name: Build And Deploy
-        id: builddeploy
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Show initial directory structure
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+      
+      - name: Install dependencies
+        run: npm install
+        working-directory: OCR
+      
+      - name: Build
+        run: npm run build
+        working-directory: OCR
+        env:
+          VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
+      
+      - name: Verify build output
+        run: |
+          echo "Build output in OCR/build:"
+          ls -la OCR/build
+          echo "\nContents of build directory:"
+          find OCR/build -type f | sort
+      
+      - name: Deploy to Azure Static Web App
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LEMON_BUSH_06755D30F }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
-          action: "upload"
-          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
-          app_location: "OCR" # App source code path
-          api_location: "" # Api source code path - optional
-          output_location: "build" # Built app content directory - optional
-          ###### End of Repository/Build Configurations ######
-
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LEMON_BUSH_06755D30F }}
-          action: "close"
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          # --- KEY FIXES BELOW ---
+          # 1. Point app_location directly to the folder containing index.html
+          app_location: 'OCR/build'
+          # 2. Leave output_location empty because we are pointing straight to the artifacts
+          output_location: ''
+          # 3. Tell Azure not to try building it again
+          skip_app_build: true
+          verbose: true
