@@ -1,37 +1,25 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
+// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // FIX: Always use root '/' for Azure Static Web Apps. 
+  // Do NOT use '/static' unless your site is hosted in a subfolder.
   base: '/',
   build: {
     outDir: 'build',
     emptyOutDir: true,
   },
   server: {
+    // Note: This proxy only works locally (npm run dev). 
+    // In production, your VITE_API_BASE_URL env var handles this.
     proxy: {
       '/api': {
         target: 'https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.log('Proxy error:', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending request to backend:', req.method, req.url);
-          });
-          proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received response from backend:', proxyRes.statusCode, req.url);
-          });
-        },
-      },
-    },
-    cors: {
-      origin: 'https://lemon-bush-06755d30f.3.azurestaticapps.net',
-      methods: 'GET,POST,PUT,DELETE,OPTIONS',
-      allowedHeaders: 'Content-Type,Authorization',
-    },
-  },
-});
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  }
+})
