@@ -20,24 +20,26 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          # Removed cache settings to prevent path errors
+      
+      # Debug step: Check file structure to confirm where files are
+      - name: Show directory structure
+        run: ls -la
       
       - name: Install dependencies
         run: npm install
-        working-directory: OCR
+        # REMOVED: working-directory: OCR (Run in root instead)
       
       - name: Build
         run: npm run build
-        working-directory: OCR
+        # REMOVED: working-directory: OCR
         env:
           VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
       
-      # Moves the build output to a clean root folder named 'dist'
-      # This fixes the Azure "Invalid Directory" error
       - name: Move Build Artifacts to Root
         run: |
           mkdir -p dist
-          cp -r OCR/build/* dist/
+          # Changed 'OCR/build' to just 'build' since we are in the root now
+          cp -r build/* dist/ 
           echo "Verifying dist content:"
           ls -la dist
       
