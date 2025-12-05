@@ -1,0 +1,19 @@
+﻿name: dmsocr-backend-6048
+resourceGroup: dms-ocr-dev-rg
+properties:
+  configuration:
+    activeRevisionsMode: Single
+    registries:
+      - server: dmsocr5640.azurecr.io
+        username: dmsocr5640
+        passwordSecretRef: registry-password
+    secrets:
+      - name: registry-password
+        value: 
+  template:
+    containers:
+      - name: dmsocr-backend-6048
+        image: dmsocr5640.azurecr.io/dms-ocr-backend:latest
+        resources:
+          cpu: 0.5
+          memory: 1Gi
