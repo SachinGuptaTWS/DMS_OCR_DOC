@@ -17,18 +17,16 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4  # Updated to v4 for better Node 20 support
         with:
-          node-version: 18
+          node-version: 20           # CHANGED: Upgraded from 18 to 20
       
       - name: Install dependencies
         run: npm install
-        # UPDATED: Pointing to the deep path we found in the debug log
         working-directory: Downloads/DMS_OCR_MODEL/OCR
       
       - name: Build
         run: npm run build
-        # UPDATED: Pointing to the deep path
         working-directory: Downloads/DMS_OCR_MODEL/OCR
         env:
           VITE_API_BASE_URL: https://dmsocr-backend-new.lemonsand-685cd42d.eastus.azurecontainerapps.io
@@ -36,7 +34,7 @@ jobs:
       - name: Move Build Artifacts to Root
         run: |
           mkdir -p dist
-          # We copy the build output from the deep folder to a clean 'dist' folder at the root
+          # Copying from the correct deep path we found earlier
           cp -r Downloads/DMS_OCR_MODEL/OCR/build/* dist/
           echo "Verifying dist content:"
           ls -la dist
@@ -47,7 +45,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          # We point Azure to the clean 'dist' folder we just created
           app_location: 'dist'
           output_location: ''
           skip_app_build: true
