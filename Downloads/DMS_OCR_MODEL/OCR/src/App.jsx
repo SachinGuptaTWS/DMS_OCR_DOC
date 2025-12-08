@@ -8,7 +8,7 @@ import {
   ChevronRight, Search, Menu, Download, Filter, MapPin
 } from 'lucide-react';
 
-const API_ENDPOINT = "http://localhost:8000/api/benchmark";
+const API_ENDPOINT = "https://defenselessly-estuarine-jaida.ngrok-free.dev/api/benchmark";
 
 // --- CONFIGURATION ---
 const STRATEGY_MAP = {
