@@ -11,9 +11,9 @@ from openai import AzureOpenAI
 import httpx
 
 # --- CONFIGURATION (MATCHING SERVER.PY) ---
-AZURE_ENDPOINT = "https://rajan-m2nq2pyi-canadaeast.openai.azure.com"
-AZURE_API_KEY = "3972eb4e50404396b23da7c6596ad1de"
-AZURE_API_VERSION = "2024-08-01-preview"
+AZURE_ENDPOINT = "#"
+AZURE_API_KEY = "#"
+AZURE_API_VERSION = "#"
 AZURE_DEPLOYMENT_NAME = "gpt-4o"
 
 # --- TESSERACT SETUP (WINDOWS ROBUST) ---
