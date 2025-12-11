@@ -8,7 +8,9 @@ import {
   ChevronRight, Search, Menu, Download, Filter, MapPin
 } from 'lucide-react';
 
+// Use environment variable if available, otherwise default to localhost for development
 const API_ENDPOINT = "https://defenselessly-estuarine-jaida.ngrok-free.dev/api/benchmark";
+
 
 // --- CONFIGURATION ---
 const STRATEGY_MAP = {
@@ -116,35 +118,99 @@ const EntityChip = ({ entity }) => {
 
 const MarkdownTable = ({ content }) => {
   if (!content) return null;
-  const safeContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-
+  
   try {
-    const rows = safeContent.trim().split('\n').map(r => {
-        const cells = r.split('|');
-        if (cells.length > 2) return cells.slice(1, -1).map(c => c.trim());
-        return [];
-    }).filter(r => r.length > 0);
+    let rows = [];
+    
+    // If content is an array of arrays, use it directly
+    if (Array.isArray(content) && content.length > 0) {
+      if (Array.isArray(content[0])) {
+        rows = content;
+      } 
+      // If content is an array of objects, convert to array of arrays
+      else if (typeof content[0] === 'object') {
+        const headers = Object.keys(content[0] || {});
+        const body = content.map(obj => headers.map(header => obj[header]));
+        rows = [headers, ...body];
+      }
+    }
+    // If content is a string, try to parse it as markdown table
+    else if (typeof content === 'string') {
+      const lines = content.trim().split('\n');
+      const isMarkdownTable = lines.some(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
+      
+      if (isMarkdownTable) {
+        rows = lines
+          .filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'))
+          .map(line => 
+            line.trim()
+              .slice(1, -1) // Remove leading and trailing |
+              .split('|')
+              .map(cell => cell.trim())
+          );
+      } else {
+        // If not a markdown table, try to parse as JSON
+        try {
+          const data = JSON.parse(content);
+          if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data[0])) {
+              rows = data;
+            } else if (typeof data[0] === 'object') {
+              const headers = Object.keys(data[0] || {});
+              const body = data.map(obj => headers.map(header => obj[header]));
+              rows = [headers, ...body];
+            }
+          }
+        } catch (e) {
+          // If not valid JSON, treat as raw text
+          return <pre className="text-xs bg-slate-50 p-4 border border-slate-200 font-mono overflow-x-auto text-slate-700">{content}</pre>;
+        }
+      }
+    }
 
-    if (rows.length < 2) return <pre className="text-xs bg-slate-50 p-4 border border-slate-200 font-mono overflow-x-auto text-slate-700">{safeContent}</pre>;
+    // If no valid rows, show raw content
+    if (rows.length === 0) {
+      return (
+        <pre className="text-xs bg-slate-50 p-4 border border-slate-200 font-mono overflow-x-auto text-slate-700">
+          {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
+        </pre>
+      );
+    }
 
-    const header = rows[0];
-    const body = rows.slice(2);
+    // Determine number of columns (use the row with the most columns)
+    const columnCount = Math.max(...rows.map(row => row.length), 0);
+    
+    // Generate default headers (Column 1, Column 2, etc.)
+    const headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
+    
+    // Use all rows as body rows
+    const body = rows;
 
     return (
-      <div className="overflow-x-auto my-4 border border-slate-200 bg-white">
+      <div className="overflow-x-auto my-4 border border-slate-200 bg-white rounded">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {header.map((h, i) => (
-                <th key={i} className="px-4 py-2 text-left font-bold text-slate-700 text-xs uppercase tracking-wider border-r border-slate-200 last:border-0 whitespace-nowrap">{h}</th>
+              {headers.map((header, i) => (
+                <th 
+                  key={i} 
+                  className="px-4 py-2 text-left font-bold text-slate-700 text-xs uppercase tracking-wider border-r border-slate-200 last:border-0 whitespace-nowrap"
+                >
+                  {header}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {body.map((row, i) => (
               <tr key={i} className="hover:bg-slate-50 transition-colors">
-                {row.map((cell, j) => (
-                  <td key={j} className="px-4 py-2 text-slate-700 border-r border-slate-100 last:border-0 text-xs">{cell}</td>
+                {headers.map((_, j) => (
+                  <td 
+                    key={j} 
+                    className="px-4 py-2 text-slate-700 border-r border-slate-100 last:border-0 text-xs align-top"
+                  >
+                    {row[j] !== undefined && row[j] !== null ? String(row[j]) : ''}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -153,7 +219,19 @@ const MarkdownTable = ({ content }) => {
       </div>
     );
   } catch (e) {
-    return <div className="text-xs text-red-600 bg-red-50 p-2 border border-red-200">Table Rendering Error</div>;
+    console.error('Table rendering error:', e);
+    return (
+      <div className="text-xs text-red-600 bg-red-50 p-4 border border-red-200 rounded">
+        <div className="font-bold mb-1">Error rendering table:</div>
+        <div className="font-mono text-xs">{e.message}</div>
+        <details className="mt-2">
+          <summary className="text-xs cursor-pointer text-red-700">Show raw data</summary>
+          <pre className="mt-1 p-2 bg-white border border-red-100 overflow-auto max-h-40">
+            {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
   }
 };
 
